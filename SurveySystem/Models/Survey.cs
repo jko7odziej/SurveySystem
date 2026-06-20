@@ -13,11 +13,7 @@ namespace SurveySystem.Models
         public string Title { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        // Identyfikator twórcy ankiety (z systemu Identity)
         public string CreatedById { get; set; } = string.Empty;
-
-        // Relacje
         public ICollection<Option> Options { get; set; } = new List<Option>();
         public ICollection<Vote> Votes { get; set; } = new List<Vote>();
     }

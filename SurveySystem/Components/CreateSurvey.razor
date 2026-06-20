@@ -1,0 +1,76 @@
+﻿@page "/create-survey"
+@using SurveySystem.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Ankieter")]
+@inject SurveyService SurveyService
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Kreator Ankiety</PageTitle>
+
+<div class="container mt-4">
+    <h2 class="text-primary">Stwórz nową ankietę</h2>
+    <hr />
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">Pytanie (Tytuł ankiety):</label>
+        <input type="text" class="form-control" @bind="title" placeholder="np. Jaki jest Twój ulubiony język programowania?" />
+    </div>
+
+    <h4 class="mt-4">Opcje odpowiedzi:</h4>
+    @foreach (var (option, index) in options.Select((value, i) => (value, i)))
+    {
+        <div class="input-group mb-2">
+            <input type="text" class="form-control" value="@option" @onchange="@(e => UpdateOption(index, e.Value?.ToString() ?? ""))" placeholder="Wpisz odpowiedź..." />
+            <button class="btn btn-outline-danger" @onclick="@(() => RemoveOption(index))">Usuń</button>
+        </div>
+    }
+
+    <button class="btn btn-secondary mb-4 mt-2" @onclick="AddOption">
+        + Dodaj kolejną opcję
+    </button>
+
+    <div>
+        <button class="btn btn-primary btn-lg" @onclick="SaveSurvey" disabled="@(!CanSave)">Zapisz i opublikuj</button>
+    </div>
+
+    @if (savedSurveyId > 0)
+    {
+        <div class="alert alert-success mt-4">
+            <strong>Udało się!</strong> Ankieta została zapisana w bazie. <br/>
+            <a href="/survey/@savedSurveyId" class="alert-link">Kliknij tutaj, aby przejść do głosowania.</a>
+        </div>
+    }
+</div>
+
+@code {
+    private string title = "";
+    private List<string> options = new() { "", "" };
+    private int savedSurveyId = 0;
+
+    private void AddOption() => options.Add("");
+
+    private void RemoveOption(int index)
+    {
+        if (options.Count > 2) options.RemoveAt(index);
+    }
+
+    private void UpdateOption(int index, string value) => options[index] = value;
+
+    private bool CanSave => !string.IsNullOrWhiteSpace(title) && options.All(o => !string.IsNullOrWhiteSpace(o)) && options.Count >= 2;
+
+    private async Task SaveSurvey()
+    {
+        // 1. Pobranie stanu uwierzytelnienia
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        
+        // 2. Wyciągnięcie prawdziwego ID zalogowanego użytkownika
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            // 3. Zapis do bazy danych z poprawnym identyfikatorem twórcy
+            savedSurveyId = await SurveyService.CreateSurveyAsync(title, options, userId);
+        }
+    }
+}

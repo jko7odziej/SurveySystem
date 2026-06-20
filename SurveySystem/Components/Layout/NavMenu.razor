@@ -1,8 +1,4 @@
-﻿@implements IDisposable
-
-@inject NavigationManager NavigationManager
-
-<div class="top-row ps-3 navbar navbar-dark">
+﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">SurveySystem</a>
     </div>
@@ -12,81 +8,67 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="auth">
-                <span class="bi bi-lock-nav-menu" aria-hidden="true"></span> Auth Required
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3 mt-3 mb-3">
+                    <div class="p-3 rounded" style="background-color: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1);">
+                        <span class="d-block text-white-50" style="font-size: 0.85rem;">Witaj!</span>
+                        <span class="d-block text-white fw-bold text-truncate mt-1" title="@context.User.Identity?.Name">
+                            @context.User.Identity?.Name
+                        </span>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        
+        <AuthorizeView Roles="Ankieter">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center" href="create-survey">
+                        <span class="bi bi-plus-square fs-4 me-3" aria-hidden="true" style="line-height: 1;"></span>
+                        <span class="mt-1">Kreator Ankiety</span>
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
+                    <NavLink class="nav-link d-flex align-items-center" href="surveys">
+                        <span class="bi bi-list-check fs-4 me-3" aria-hidden="true" style="line-height: 1;"></span>
+                        <span class="mt-1">Lista Ankiet</span>
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
-                    <form action="Account/Logout" method="post">
+                
+                <div class="nav-item px-3 mt-4">
+                    <form action="/Account/Logout" method="post">
                         <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                        <button type="submit" class="nav-link">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        <input type="hidden" name="ReturnUrl" value="Account/Login" />
+                        <button type="submit" class="nav-link d-flex align-items-center w-100 btn btn-link text-danger border-0 text-start">
+                            <span class="bi bi-box-arrow-right fs-4 me-3" aria-hidden="true" style="line-height: 1;"></span>
+                            <span class="mt-1">Wyloguj</span>
                         </button>
                     </form>
                 </div>
             </Authorized>
+            
             <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
+                <div class="nav-item px-3 mt-3">
+                    <NavLink class="nav-link d-flex align-items-center" href="Account/Login">
+                        <span class="bi bi-person-badge fs-4 me-3" aria-hidden="true" style="line-height: 1;"></span>
+                        <span class="mt-1">Zaloguj się</span>
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                    <NavLink class="nav-link d-flex align-items-center" href="Account/Register">
+                        <span class="bi bi-person-plus fs-4 me-3" aria-hidden="true" style="line-height: 1;"></span>
+                        <span class="mt-1">Rejestracja</span>
                     </NavLink>
                 </div>
             </NotAuthorized>
         </AuthorizeView>
+
     </nav>
 </div>
-
-@code {
-    private string? currentUrl;
-
-    protected override void OnInitialized()
-    {
-        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        NavigationManager.LocationChanged += OnLocationChanged;
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
-        StateHasChanged();
-    }
-
-    public void Dispose()
-    {
-        NavigationManager.LocationChanged -= OnLocationChanged;
-    }
-}
-
