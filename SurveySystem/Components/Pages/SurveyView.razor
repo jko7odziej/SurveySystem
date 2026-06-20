@@ -1,0 +1,118 @@
+﻿@page "/survey/{Id:int}"
+@using SurveySystem.Services
+@using SurveySystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject SurveyService SurveyService
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Głosowanie</PageTitle>
+
+<div class="container mt-4">
+    @if (survey == null)
+    {
+        <p><em>Szukam ankiety...</em></p>
+    }
+    else
+    {
+        <h2 class="text-primary">@survey.Title</h2>
+        <hr />
+
+        @if (hasVoted)
+        {
+            <div class="alert alert-success mb-4">
+                <strong>Dziękujemy za głos!</strong> System został zaktualizowany. Oto aktualne wyniki:
+            </div>
+            
+            <div class="card p-4 shadow-sm" style="max-width: 700px;">
+                @foreach (var result in results)
+                {
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>@result.OptionText</span>
+                            <strong>@result.VoteCount głosów (@Math.Round(result.Percentage)%)</strong>
+                        </div>
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: @Math.Round(result.Percentage)%;"></div>
+                        </div>
+                    </div>
+                }
+                
+                <div class="mt-4">
+                    <a href="/surveys" class="btn btn-outline-secondary">Wróć do listy ankiet</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card p-4 shadow-sm" style="max-width: 600px;">
+                <h5 class="mb-3">Wybierz jedną z opcji:</h5>
+                @foreach (var option in survey.Options)
+                {
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="surveyOptions" id="opt_@option.Id" 
+                               checked="@(selectedOptionId == option.Id)"
+                               @onchange="@(() => selectedOptionId = option.Id)" style="cursor:pointer;" />
+                        <label class="form-check-label w-100" for="opt_@option.Id" style="cursor:pointer;">
+                            @option.Text
+                        </label>
+                    </div>
+                }
+
+                <button class="btn btn-primary btn-lg mt-3" @onclick="SubmitVote" disabled="@(selectedOptionId == 0)">
+                    Oddaj głos
+                </button>
+                
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">@errorMessage</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Survey? survey;
+    private int selectedOptionId;
+    private bool hasVoted = false;
+    private string errorMessage = "";
+    private List<SurveyResultDto> results = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        survey = await SurveyService.GetSurveyAsync(Id);
+    }
+
+    private async Task SubmitVote()
+    {
+        // 1. Pobranie stanu uwierzytelnienia
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        
+        // 2. Wyciągnięcie prawdziwego ID zalogowanego użytkownika
+        var currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (currentUserId == null) 
+        {
+            errorMessage = "Błąd autoryzacji: Musisz być zalogowany, aby oddać głos!";
+            return;
+        }
+
+        // 3. Zapis głosu z prawdziwym ID
+        var success = await SurveyService.CastVoteAsync(Id, selectedOptionId, currentUserId);
+        
+        if (success)
+        {
+            hasVoted = true;
+            results = await SurveyService.GetResultsAsync(Id);
+        }
+        else
+        {
+            errorMessage = "Odmowa: Z naszej bazy wynika, że oddałeś już głos w tej ankiecie!";
+        }
+    }
+}

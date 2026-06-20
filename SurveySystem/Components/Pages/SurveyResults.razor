@@ -1,0 +1,64 @@
+﻿@page "/survey/{Id:int}/results"
+@using SurveySystem.Services
+@using SurveySystem.Models
+@inject SurveyService SurveyService
+@rendermode InteractiveServer
+
+<PageTitle>Wyniki Ankiety</PageTitle>
+
+<div class="container mt-4">
+    @if (survey == null)
+    {
+        <p><em>Ładowanie wyników...</em></p>
+    }
+    else
+    {
+        <h2 class="text-primary">Wyniki: @survey.Title</h2>
+        <hr />
+
+        <div class="card p-4 shadow-sm" style="max-width: 700px;">
+            @if (results.Count == 0)
+            {
+                <div class="alert alert-info">Nikt jeszcze nie oddał głosu w tej ankiecie. Bądź pierwszy!</div>
+            }
+            else
+            {
+                @foreach (var result in results)
+                {
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>@result.OptionText</span>
+                            <strong>@result.VoteCount głosów (@Math.Round(result.Percentage)%)</strong>
+                        </div>
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: @Math.Round(result.Percentage)%;"></div>
+                        </div>
+                    </div>
+                }
+            }
+
+            <div class="mt-4 d-flex gap-2">
+                <a href="/surveys" class="btn btn-outline-secondary">Wróć do listy</a>
+                <a href="/survey/@Id" class="btn btn-success">Przejdź do głosowania</a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Survey? survey;
+    private List<SurveyResultDto> results = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pobieramy ankietę i od razu przeliczamy wyniki
+        survey = await SurveyService.GetSurveyAsync(Id);
+        if (survey != null)
+        {
+            results = await SurveyService.GetResultsAsync(Id);
+        }
+    }
+}

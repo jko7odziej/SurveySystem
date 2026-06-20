@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SurveySystem.Components;
 using SurveySystem.Components.Account;
 using SurveySystem.Data;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddScoped<SurveySystem.Services.SurveyService>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
@@ -29,6 +31,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
@@ -59,5 +62,51 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+// --- INICJALIZACJA RÓL I TWORZENIE KONTA ADMINA ---
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
+    // 1. Tworzenie ról
+    string[] roleNames = { "Ankieter", "Respondent" };
+    foreach (var roleName in roleNames)
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+
+    // 2. Automatyczne tworzenie g³ównego konta Admina
+    var adminEmail = "admin@ankiety.pl";
+    var adminPassword = "Admin_Password123!";
+
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser == null)
+    {
+        // Tworzymy nowe konto, od razu jako potwierdzone
+        adminUser = new ApplicationUser
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            EmailConfirmed = true
+        };
+
+        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+        if (createResult.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Ankieter");
+        }
+    }
+    else
+    {
+        // Jeœli konto ju¿ istnieje, upewniamy siê, ¿e ma rolê
+        if (!await userManager.IsInRoleAsync(adminUser, "Ankieter"))
+        {
+            await userManager.AddToRoleAsync(adminUser, "Ankieter");
+        }
+    }
+}
+// ------------------------------------------
 app.Run();
