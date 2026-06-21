@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace SurveySystem.Services
 {
+    // Prosty rekord do przesyłania wyników na wykres
     public record SurveyResultDto(string OptionText, int VoteCount, double Percentage);
 
     public class SurveyService
@@ -45,6 +46,7 @@ namespace SurveySystem.Services
         // METODA DLA RESPONDENTA: Oddawanie głosu
         public async Task<bool> CastVoteAsync(int surveyId, int optionId, string userId)
         {
+            // Sprawdzamy, czy użytkownik już głosował
             bool hasVoted = await _context.Votes
                 .AnyAsync(v => v.SurveyId == surveyId && v.UserId == userId);
 
@@ -69,6 +71,7 @@ namespace SurveySystem.Services
 
             if (totalVotes == 0)
             {
+                // Dodajemy wyraźne typowanie, aby zlikwidować żółte ostrzeżenie CS8619
                 return new List<SurveyResultDto>();
             }
 
@@ -82,6 +85,7 @@ namespace SurveySystem.Services
 
             return results ?? new List<SurveyResultDto>();
         }
+        // --- METODA: Pobieranie wszystkich ankiet do listy ---
         public async Task<List<Survey>> GetAllSurveysAsync()
         {
             return await _context.Surveys.ToListAsync();
